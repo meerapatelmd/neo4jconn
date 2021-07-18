@@ -1,6 +1,13 @@
 
 
 
+#' @title
+#' Fetch Database Name to Key Map
+#' @seealso
+#'  \code{\link[R.cache]{loadCache}}
+#' @rdname fetch_db_name
+#' @export
+#' @importFrom R.cache loadCache
 fetch_db_name <-
   function() {
 
@@ -12,6 +19,13 @@ fetch_db_name <-
   }
 
 
+#' @title
+#' Fetch Database Key for a Name
+#' @seealso
+#'  \code{\link[dplyr]{filter}}
+#' @rdname fetch_db_key
+#' @export
+#' @importFrom dplyr filter
 fetch_db_key <-
   function(db_name) {
       fetch_db_name() %>%
@@ -20,6 +34,19 @@ fetch_db_key <-
   }
 
 
+#' @title
+#' Store Database Name
+#' @seealso
+#'  \code{\link[R.cache]{findCache}},\code{\link[R.cache]{saveCache}},\code{\link[R.cache]{loadCache}}
+#'  \code{\link[tibble]{c("tibble", "tibble")}},\code{\link[tibble]{as_tibble}}
+#'  \code{\link[dplyr]{mutate_all}},\code{\link[dplyr]{mutate}},\code{\link[dplyr]{coalesce}}
+#'  \code{\link[stringr]{str_remove}}
+#' @rdname store_db_name
+#' @export
+#' @importFrom R.cache findCache saveCache loadCache
+#' @importFrom tibble tibble as_tibble
+#' @importFrom dplyr mutate_all mutate coalesce
+#' @importFrom stringr str_remove_all
 store_db_name <-
   function(new_db_name,
            new_db_key,
@@ -89,6 +116,19 @@ store_db_name <-
 
 
 
+#' @title
+#' Start Neo4j Database
+#' @seealso
+#'  \code{\link[readr]{read_lines}}
+#'  \code{\link[neo4jshell]{neo4j_start}}
+#'  \code{\link[glue]{glue}}
+#'  \code{\link[stringr]{str_replace}}
+#' @rdname start_neo4j
+#' @export
+#' @importFrom readr read_lines
+#' @importFrom neo4jshell neo4j_start
+#' @importFrom glue glue
+#' @importFrom stringr str_replace
 start_neo4j <-
   function(db_key,
            neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss",
@@ -185,6 +225,13 @@ start_neo4j <-
 
 
 
+#' @title
+#' Stop Neo4j Database
+#' @seealso
+#'  \code{\link[neo4jshell]{neo4j_stop}}
+#' @rdname stop_neo4j
+#' @export
+#' @importFrom neo4jshell neo4j_stop
 stop_neo4j <-
   function(db_key,
            neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss") {
