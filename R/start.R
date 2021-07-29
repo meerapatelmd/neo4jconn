@@ -218,6 +218,8 @@ start_neo4j <-
 
     list(conn_details = conn_details,
          http_address = http_address,
+         db_key = db_key,
+         neo4j_home = neo4j_home,
          log =
            list(session = new_log_lines,
                 initial = log))
@@ -233,11 +235,10 @@ start_neo4j <-
 #' @export
 #' @importFrom neo4jshell neo4j_stop
 stop_neo4j <-
-  function(db_key,
-           neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss") {
+  function(conn) {
 
-    db_home <- path.expand(file.path(neo4j_home,
-                                     db_key))
+    db_home <- path.expand(file.path(conn$neo4j_home,
+                                     conn$db_key))
 
     neo4j_path <- file.path(db_home,
                             "bin",
