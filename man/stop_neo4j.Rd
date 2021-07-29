@@ -4,10 +4,7 @@
 \alias{stop_neo4j}
 \title{Stop Neo4j Database}
 \usage{
-stop_neo4j(
-  db_key,
-  neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss"
-)
+stop_neo4j(conn)
 }
 \description{
 Stop Neo4j Database
