@@ -4,7 +4,7 @@
 \alias{fetch_db_name}
 \title{Fetch Database Name to Key Map}
 \usage{
-fetch_db_name()
+fetch_db_name(db_key)
 }
 \description{
 Fetch Database Name to Key Map

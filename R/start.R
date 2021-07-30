@@ -9,12 +9,30 @@
 #' @export
 #' @importFrom R.cache loadCache
 fetch_db_name <-
-  function() {
+  function(db_key) {
 
+    if (missing(db_key)) {
     R.cache::loadCache(
       dirs = "neo4jconn",
       key  = list("db_name")
     )
+    } else {
+
+
+      x <-
+      R.cache::loadCache(
+        dirs = "neo4jconn",
+        key  = list("db_name")) %>%
+        split(.$db_key) %>%
+        pluck(db_key)
+
+      if (length(x)==0) {
+        cli::cli_alert_danger("'{db_key}' not found.")
+      } else {
+        x
+      }
+
+    }
 
   }
 
@@ -29,7 +47,8 @@ fetch_db_name <-
 fetch_db_key <-
   function(db_name) {
       fetch_db_name() %>%
-      dplyr::filter(db_name == db_name)
+      split(.$db_name) %>%
+      pluck(db_name)
 
   }
 
@@ -65,6 +84,8 @@ store_db_name <-
           db_key = list.files(neo4j_home,pattern = "^dbms-")) %>%
         mutate(db_name = NA_character_)
 
+      print(db_df)
+
       R.cache::saveCache(
         object = db_df,
         dirs   = "neo4jconn",
@@ -77,11 +98,12 @@ store_db_name <-
     db_name <-
       R.cache::loadCache(
         dirs = "neo4jconn",
-        key  = list("db_name")
-      ) %>%
+        key  = list("db_name")) %>%
       tibble::as_tibble() %>%
       dplyr::mutate_all(as.character) %>%
-      dplyr::mutate(join_key.x = stringr::str_remove_all(db_key, "[-]{1}"))
+      dplyr::mutate(join_key.x = stringr::str_remove_all(db_key, "[-]{1}")) %>%
+      dplyr::mutate(db_exists = file.exists(file.path(neo4j_home,
+                                                      db_key)))
 
     new_db_name <-
       tibble::tibble(
@@ -96,7 +118,8 @@ store_db_name <-
                 keep = TRUE,
                 by = c("join_key.x" = "join_key.y")) %>%
       transmute(db_key = dplyr::coalesce(db_key.y, db_key.x),
-                db_name = dplyr::coalesce(db_name.y, db_name.x))
+                db_name = dplyr::coalesce(db_name.y, db_name.x),
+                db_exists)
 
 
     R.cache::saveCache(
@@ -109,6 +132,8 @@ store_db_name <-
       dirs = "neo4jconn",
       key  = list("db_name")
     )
+
+    updated_db_df
 
 
   }
@@ -154,75 +179,105 @@ start_neo4j <-
                 "neo4j.log")
     log <- readr::read_lines(log_file)
 
+    if (verbose) {
+
+      cli::cli_progress_step("Starting...")
+
+    }
+
+    results <-
+    capture.output(
     neo4jshell::neo4j_start(neo4j_path = neo4j_path)
+    )
+
+    if (any(grepl("Neo4j is already running", x = results))) {
+      cli::cli_alert_danger(grep("Neo4j is already running",
+                          x = results,
+                          value = TRUE))
+
+      list(conn_details = NULL,
+           http_address = NULL,
+           db_key = db_key,
+           neo4j_home = neo4j_home,
+           log =
+             list(session = NULL,
+                  initial = log))
+    } else {
+
 
     for (i in 1:100) {
 
       if (verbose) {
-      cat(glue::glue("{i*5} secs..."),
-          sep = "\n")
+        cli::cli_progress_update()
       }
-      Sys.sleep(5)
+
       new_log <-
         readr::read_lines(log_file)
       new_log_lines <-
         new_log[!(new_log %in% log)]
       newest_line <-
         new_log_lines[length(new_log_lines)]
-      if (grepl("Started[.]{1}$", x = newest_line)) {
-        bolt_address <-
-          new_log_lines %>%
-          grep(pattern = "Bolt enabled on",
-               value = TRUE) %>%
-          stringr::str_replace(pattern = "(^.*Bolt enabled on )(.*?)([.]{1}.*$)",
-                      replacement = "bolt://\\2") %>%
-          unique()
 
-        bolt_address <-
-          bolt_address[length(bolt_address)]
-        stopifnot(length(bolt_address) == 1)
+      Sys.sleep(1)
 
-        http_address <-
-          new_log_lines %>%
-          grep(pattern = "Remote interface available at ",
-               value = TRUE) %>%
-          stringr::str_replace(pattern = "(^.*Remote interface available at )(.*)([/]{1}.*$)",
-                      replacement = "\\2") %>%
-          unique()
+      if (length(newest_line)>0) {
 
-        http_address <-
-          http_address[length(http_address)]
-        stopifnot(length(http_address) == 1)
+        if (grepl("Started[.]{1}$", x = newest_line)) {
 
-        conn_details <-
-          list(address = bolt_address,
-               uid     = uid,
-               pwd     = pwd)
+          bolt_address <-
+            new_log_lines %>%
+            grep(pattern = "Bolt enabled on",
+                 value = TRUE) %>%
+            stringr::str_replace(pattern = "(^.*Bolt enabled on )(.*?)([.]{1}.*$)",
+                        replacement = "bolt://\\2") %>%
+            unique()
 
-        if (verbose) {
-        cat(newest_line,
-            sep = "\n")
-        }
-        break
+          bolt_address <-
+            bolt_address[length(bolt_address)]
+          stopifnot(length(bolt_address) == 1)
+
+          http_address <-
+            new_log_lines %>%
+            grep(pattern = "Remote interface available at ",
+                 value = TRUE) %>%
+            stringr::str_replace(pattern = "(^.*Remote interface available at )(.*)([/]{1}.*$)",
+                        replacement = "\\2") %>%
+            unique()
+
+          http_address <-
+            http_address[length(http_address)]
+          stopifnot(length(http_address) == 1)
+
+          conn_details <-
+            list(address = bolt_address,
+                 uid     = uid,
+                 pwd     = pwd)
+
+          # if (verbose) {
+          #   cli::cli_text(newest_line)
+          # }
+
+          return(
+          list(conn_details = conn_details,
+               http_address = http_address,
+               db_key = db_key,
+               neo4j_home = neo4j_home,
+               log =
+                 list(session = new_log_lines,
+                      initial = log))
+          )
       } else if (grepl("Stopped[.]{1}$", x = newest_line)) {
 
         if (verbose) {
-        cat(new_log_lines,
-            sep = "\n")
+          cli::cli_text(new_log_lines)
         }
         stop(glue::glue("Neo4j failed to start.\n\tCheck logs at {log_file}."), call. = FALSE)
 
       }
+
     }
-
-
-    list(conn_details = conn_details,
-         http_address = http_address,
-         db_key = db_key,
-         neo4j_home = neo4j_home,
-         log =
-           list(session = new_log_lines,
-                initial = log))
+    }
+    }
 }
 
 
