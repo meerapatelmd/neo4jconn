@@ -5,7 +5,7 @@
 \title{Start Neo4j Database}
 \usage{
 start_neo4j(
-  db_key = "dbms-3e732dbc-5fd2-4f54-b6d5-dfaca7494d7c",
+  db_key,
   db_name,
   neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss",
   uid = "neo4j",

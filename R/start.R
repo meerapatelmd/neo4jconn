@@ -13,7 +13,7 @@
 #' @importFrom stringr str_replace
 
 start_neo4j <-
-  function(db_key     = "dbms-3e732dbc-5fd2-4f54-b6d5-dfaca7494d7c",
+  function(db_key,
            db_name,
            neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss",
            uid        = "neo4j",
