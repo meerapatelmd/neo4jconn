@@ -34,6 +34,10 @@ start_neo4j <-
         stop("`db_name` not recognized.")
 
 
+      } else {
+
+        db_key <- fetched_db_key
+
       }
 
     }
@@ -132,16 +136,27 @@ start_neo4j <-
           # if (verbose) {
           #   cli::cli_text(newest_line)
           # }
+          #
 
           return(
-          list(conn_details = conn_details,
-               http_address = http_address,
-               db_key = db_key,
-               neo4j_home = neo4j_home,
-               log =
-                 list(session = new_log_lines,
-                      initial = log))
+          new(Class = "Neo4jConnection",
+              conn_details = conn_details,
+              http_address = http_address,
+              db_key       = db_key,
+              neo4j_home   = neo4j_home,
+              log          = list(session = new_log_lines,
+                                  initial = log))
           )
+
+          # return(
+          # list(conn_details = conn_details,
+          #      http_address = http_address,
+          #      db_key = db_key,
+          #      neo4j_home = neo4j_home,
+          #      log =
+          #        list(session = new_log_lines,
+          #             initial = log))
+          # )
       } else if (grepl("Stopped[.]{1}$", x = newest_line)) {
 
         if (verbose) {
@@ -176,8 +191,8 @@ start_neo4j <-
 stop_neo4j <-
   function(conn) {
 
-    db_home <- path.expand(file.path(conn$neo4j_home,
-                                     conn$db_key))
+    db_home <- path.expand(file.path(conn@neo4j_home,
+                                     conn@db_key))
 
     neo4j_path <- file.path(db_home,
                             "bin",

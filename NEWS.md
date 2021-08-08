@@ -1,3 +1,8 @@
+# neo4jconn 0.0.1.9000  
+
+* Created Neo4jConnection class 
+
+
 # neo4jconn 0.0.1
 
-* Added a `NEWS.md` file to track changes to the package.
+* First commit  
