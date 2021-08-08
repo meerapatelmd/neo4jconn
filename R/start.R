@@ -1,146 +1,3 @@
-
-
-
-#' @title
-#' Fetch Database Name to Key Map
-#' @seealso
-#'  \code{\link[R.cache]{loadCache}}
-#' @rdname fetch_db_name
-#' @export
-#' @importFrom R.cache loadCache
-fetch_db_name <-
-  function(db_key) {
-
-    if (missing(db_key)) {
-    R.cache::loadCache(
-      dirs = "neo4jconn",
-      key  = list("db_name")
-    )
-    } else {
-
-
-      x <-
-      R.cache::loadCache(
-        dirs = "neo4jconn",
-        key  = list("db_name")) %>%
-        split(.$db_key) %>%
-        pluck(db_key)
-
-      if (length(x)==0) {
-        cli::cli_alert_danger("'{db_key}' not found.")
-      } else {
-        x
-      }
-
-    }
-
-  }
-
-
-#' @title
-#' Fetch Database Key for a Name
-#' @seealso
-#'  \code{\link[dplyr]{filter}}
-#' @rdname fetch_db_key
-#' @export
-#' @importFrom dplyr filter
-fetch_db_key <-
-  function(db_name) {
-      fetch_db_name() %>%
-      split(.$db_name) %>%
-      pluck(db_name)
-
-  }
-
-
-#' @title
-#' Store Database Name
-#' @seealso
-#'  \code{\link[R.cache]{findCache}},\code{\link[R.cache]{saveCache}},\code{\link[R.cache]{loadCache}}
-#'  \code{\link[tibble]{c("tibble", "tibble")}},\code{\link[tibble]{as_tibble}}
-#'  \code{\link[dplyr]{mutate_all}},\code{\link[dplyr]{mutate}},\code{\link[dplyr]{coalesce}}
-#'  \code{\link[stringr]{str_remove}}
-#' @rdname store_db_name
-#' @export
-#' @importFrom R.cache findCache saveCache loadCache
-#' @importFrom tibble tibble as_tibble
-#' @importFrom dplyr mutate_all mutate coalesce
-#' @importFrom stringr str_remove_all
-store_db_name <-
-  function(new_db_name,
-           new_db_key,
-           neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss") {
-
-    cached_file <-
-    R.cache::findCache(
-      dirs = "neo4jconn",
-      key  = list("db_name")
-    )
-
-    if (is.null(cached_file)) {
-
-      db_df <-
-        tibble::tibble(
-          db_key = list.files(neo4j_home,pattern = "^dbms-")) %>%
-        mutate(db_name = NA_character_)
-
-      print(db_df)
-
-      R.cache::saveCache(
-        object = db_df,
-        dirs   = "neo4jconn",
-        key    = list("db_name")
-      )
-
-
-    }
-
-    db_name <-
-      R.cache::loadCache(
-        dirs = "neo4jconn",
-        key  = list("db_name")) %>%
-      tibble::as_tibble() %>%
-      dplyr::mutate_all(as.character) %>%
-      dplyr::mutate(join_key.x = stringr::str_remove_all(db_key, "[-]{1}")) %>%
-      dplyr::mutate(db_exists = file.exists(file.path(neo4j_home,
-                                                      db_key)))
-
-    new_db_name <-
-      tibble::tibble(
-        db_name = new_db_name,
-        db_key  = new_db_key
-      ) %>%
-      dplyr::mutate(join_key.y = stringr::str_remove_all(new_db_key,"[-]{1}"))
-
-    updated_db_df <-
-    db_name %>%
-      left_join(new_db_name,
-                keep = TRUE,
-                by = c("join_key.x" = "join_key.y")) %>%
-      transmute(db_key = dplyr::coalesce(db_key.y, db_key.x),
-                db_name = dplyr::coalesce(db_name.y, db_name.x),
-                db_exists)
-
-
-    R.cache::saveCache(
-      object = updated_db_df,
-      dirs   = "neo4jconn",
-      key    = list("db_name")
-    )
-
-    R.cache::loadCache(
-      dirs = "neo4jconn",
-      key  = list("db_name")
-    )
-
-    updated_db_df
-
-
-  }
-
-
-
-
 #' @title
 #' Start Neo4j Database
 #' @seealso
@@ -154,16 +11,34 @@ store_db_name <-
 #' @importFrom neo4jshell neo4j_start
 #' @importFrom glue glue
 #' @importFrom stringr str_replace
+
 start_neo4j <-
-  function(db_key,
+  function(db_key     = "dbms-3e732dbc-5fd2-4f54-b6d5-dfaca7494d7c",
+           db_name,
            neo4j_home = "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss",
-           uid = "neo4j",
-           pwd = "admin",
-           verbose = TRUE) {
+           uid        = "neo4j",
+           pwd        = "admin",
+           verbose    = TRUE) {
+
+    if (missing(db_key) & missing(db_name)) {
+      stop("Either `db_key` and `db_name` must be provided.")
+    }
+
+
+    if (!missing(db_name)) {
+
+      fetched_db_key <- fetch_db_key(db_name = db_name)$db_key
+
+      if (is.null(fetched_db_key) & missing(db_key)) {
+
+        stop("`db_name` not recognized.")
+
+
+      }
+
+    }
 
     # Get paths
-    #neo4j_home <- "~/Library/Application Support/com.Neo4j.Relate/Data/dbmss"
-    #db_key <- "dbms-3e732dbc-5fd2-4f54-b6d5-dfaca7494d7c"
     db_home <- path.expand(file.path(neo4j_home,
                                      db_key))
     db_conf_file <- file.path(db_home, "conf", "neo4j.conf")
@@ -177,7 +52,8 @@ start_neo4j <-
       file.path(db_home,
                 "logs",
                 "neo4j.log")
-    log <- readr::read_lines(log_file)
+    log <-
+      readr::read_lines(log_file)
 
     if (verbose) {
 
@@ -271,13 +147,21 @@ start_neo4j <-
         if (verbose) {
           cli::cli_text(new_log_lines)
         }
-        stop(glue::glue("Neo4j failed to start.\n\tCheck logs at {log_file}."), call. = FALSE)
+
+        stop(
+          glue::glue(
+            "Neo4j failed to start.\n\tCheck logs at {log_file}."
+            ), call. = FALSE
+          )
+
+      }
 
       }
 
     }
+
     }
-    }
+
 }
 
 
@@ -299,7 +183,7 @@ stop_neo4j <-
                             "bin",
                             "neo4j")
 
-    neo4jshell::neo4j_stop(neo4j_path = neo4j_path)
+    invisible(neo4jshell::neo4j_stop(neo4j_path = neo4j_path))
 
 
   }

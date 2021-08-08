@@ -2,6 +2,7 @@
 
 export(fetch_db_key)
 export(fetch_db_name)
+export(get_db_key_values)
 export(start_neo4j)
 export(stop_neo4j)
 export(store_db_name)
