@@ -202,3 +202,29 @@ stop_neo4j <-
 
 
   }
+
+#' @title
+#' Check if Neo4j Database is Running
+#' @seealso
+#'  \code{\link[neo4jshell]{neo4j_status}}
+#' @rdname neo4j_conn_status
+#' @export
+#' @importFrom neo4jshell neo4j_status
+
+neo4j_conn_status <-
+  function(conn) {
+
+
+    db_home <- path.expand(file.path(conn@neo4j_home,
+                                     conn@db_key))
+
+    neo4j_path <- file.path(db_home,
+                            "bin",
+                            "neo4j")
+
+
+    invisible(neo4jshell::neo4j_status(neo4j_path = neo4j_path))
+
+
+  }
+
